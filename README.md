@@ -1,0 +1,108 @@
+# Claude Code — Session History
+
+A native Windows (WPF / .NET 9) app for browsing your Claude Code session history **live**.
+It reads the `.jsonl` transcripts Claude Code writes under `~/.claude/projects` and tails them
+as they grow, so a session you are running right now streams into the window as it happens.
+
+![the app](docs/screenshot.png)
+
+## What it does
+
+- **Finds every transcript automatically** — `%USERPROFILE%\.claude\projects` on Windows *and*
+  `~/.claude/projects` inside every installed WSL distro, reached over `\\wsl.localhost`.
+  Sessions are grouped by project and sorted most-recent-first.
+- **Live tailing.** A one-second poll reads only the bytes appended since the last read, so a
+  running session appears turn by turn. A green dot marks sessions written to in the last two
+  minutes; **Follow** keeps the view pinned to the newest message and releases automatically
+  when you scroll up.
+- **Real transcript rendering** — user and assistant messages with lightweight Markdown
+  (headings, lists, tables, block quotes, fenced code), collapsible thinking blocks, and each
+  tool call paired with its result and a ✓ / ✕ / … status. Pasted and returned screenshots are
+  rendered inline, and a date divider marks each new day.
+- **Session details** — working directory, git branch, model, elapsed time, message and tool
+  counts, and cumulative input / output / cache-read / cache-write token usage.
+- **Filters** — `Ctrl+K` filters the session list, `Ctrl+F` searches the open transcript, and
+  the Thinking / Tools / System pills control how much detail is shown. API errors always
+  stay visible.
+- **Export** a transcript to Markdown, reveal the `.jsonl` in Explorer, or copy its path.
+
+## Build
+
+Requires the .NET 9 SDK **on Windows** (already present if `dotnet --list-sdks` works from
+PowerShell). From WSL:
+
+```bash
+./build.sh              # Release; use ./build.sh Debug for a debug build
+```
+
+The source can live in WSL, but the build output must land on a Windows drive — Windows
+blocks launching an executable straight from a `\\wsl.localhost` path. `build.sh` installs to
+`%LOCALAPPDATA%\ClaudeSessions`.
+
+Then run `%LOCALAPPDATA%\ClaudeSessions\ClaudeSessions.exe`.
+
+## Shortcuts and the taskbar
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File tools\install-shortcuts.ps1
+```
+
+This creates a **Start Menu** entry (so the app shows up in search and All Apps) and then
+*attempts* a taskbar pin. Windows 11 deliberately blocks programmatic pinning for ordinary
+Win32 apps — the shell's `taskbarpin` verb is hidden — so the script verifies the result
+against the folder the shell really keeps pinned shortcuts in and tells you plainly whether
+it took. It will not silently claim success.
+
+When it reports `NOT PINNED`, do the one manual step Windows requires: launch the app, then
+right-click its taskbar button → **Pin to taskbar**. It sticks from then on.
+
+`tools\make-icon.ps1` regenerates `app.ico` (the Claude spark on a dark plate) at the nine
+sizes Windows asks for. Small sizes are written as 32bpp DIB entries rather than PNG, because
+GDI+ and some shell consumers do not decode PNG-compressed icon entries.
+
+## Command line
+
+| Flag | Effect |
+|---|---|
+| `--session <text>` | Open the first session whose title, id, path or model matches `<text>` |
+| `--root <dir>` | Scan an extra history folder — an archived or copied `projects` tree |
+| `--find <text>` | Pre-fill the transcript search, so the session opens filtered and highlighted |
+| `--shot <file> [secs]` | Render the window to a PNG after `secs` and exit (used for the screenshot above) |
+| `--expand` | With `--shot`, expand tool and thinking blocks before capturing |
+
+## How it reads the transcripts
+
+Each session is one append-only `.jsonl` file whose records are heterogeneous: `user` and
+`assistant` messages, plus `ai-title`, `last-prompt`, `file-history-*`, `attachment`, `mode`
+and others. The app keeps a byte offset per file and an unterminated-line buffer, so a record
+that is only half-flushed when the poll fires is never parsed until it is complete.
+
+A few things worth knowing about the format, since they shape what you see:
+
+- A `tool_use` block and its `tool_result` live in **different records** — the result arrives in
+  a later `user` record and is matched back by `tool_use_id`. That pairing is stateful, so it
+  still works when the two records arrive in different polls.
+- Most `user` records are not things you typed: tool results, injected `<system-reminder>`
+  context and meta turns all use the same role. These are classified as plumbing and shown
+  only under the **System** pill, which is why "messages" counts look lower than record counts.
+- `thinking` blocks are often present but carry an **empty** `thinking` string (signature only).
+  Those are skipped rather than rendered as blank rows, so a session can legitimately show no
+  thinking at all.
+- The project folder name is the working directory with separators replaced by dashes, which
+  is lossy for directories that contain real dashes. The app prefers the authoritative `cwd`
+  recorded inside the transcript and only falls back to decoding the folder name.
+
+## Layout
+
+| Path | Contents |
+|---|---|
+| `Core/Model.cs` | Record and content-block parsing from JSON |
+| `Core/SessionTail.cs` | Incremental byte-offset reader; rolling per-session summary |
+| `Core/Timeline.cs` | Records → renderable items, and tool-call/result pairing |
+| `Core/Discovery.cs` | Windows + WSL history-root discovery |
+| `MainViewModel.cs` | Scanning, polling, filtering, commands |
+| `Ui/MarkdownBlock.cs` | The lightweight Markdown renderer |
+| `MainWindow.xaml` | Layout and the per-item templates |
+| `Theme.xaml` | Dark palette and control styles |
+
+No third-party packages — everything is in-box .NET.
