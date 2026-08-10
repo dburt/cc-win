@@ -11,6 +11,7 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _vm = new();
     private bool _suppressFollowChange;
+    private int? _openHit;
 
     public MainWindow()
     {
@@ -27,10 +28,28 @@ public partial class MainWindow : Window
         if (findArg >= 0 && findArg + 1 < argv.Length)
             _vm.TranscriptFilter = argv[findArg + 1];
 
+        var searchArg = Array.IndexOf(argv, "--search");
+        if (searchArg >= 0 && searchArg + 1 < argv.Length)
+            _vm.SessionFilter = argv[searchArg + 1];
+
+        // "--open <n>" jumps straight to the nth result once the search has run.
+        var openArg = Array.IndexOf(argv, "--open");
+        if (openArg >= 0 && openArg + 1 < argv.Length && int.TryParse(argv[openArg + 1], out var nth))
+            _openHit = nth;
+
         InitializeComponent();
         DataContext = _vm;
         _vm.ScrollToEndRequested += (_, _) => ScrollToEnd();
+        _vm.ScrollToItemRequested += (_, ordinal) => ScrollToOrdinal(ordinal);
         Loaded += (_, _) => _vm.Start();
+
+        if (_openHit is { } index)
+            _vm.SearchResults.CollectionChanged += (_, _) =>
+            {
+                if (_openHit is null || index >= _vm.SearchResults.Count) return;
+                _openHit = null;
+                _vm.JumpCommand.Execute(_vm.SearchResults[index]);
+            };
         Closed += (_, _) => _vm.Stop();
         MaybeSelfCapture();
     }
@@ -95,6 +114,58 @@ public partial class MainWindow : Window
             catch { }
             finally { _suppressFollowChange = false; }
         });
+    }
+
+    private void OnResultActivated(object sender, MouseButtonEventArgs e)
+    {
+        if (((ListBox)sender).SelectedItem is SearchHit hit) _vm.JumpCommand.Execute(hit);
+    }
+
+    private void OnResultKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        if (((ListBox)sender).SelectedItem is SearchHit hit) _vm.JumpCommand.Execute(hit);
+        e.Handled = true;
+    }
+
+    /// <summary>Brings a search hit into view and parks it near the top, not scrolled off-screen.</summary>
+    private void ScrollToOrdinal(int ordinal)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
+        {
+            if (ordinal < 0 || ordinal >= _vm.Timeline.Count) return;
+            var item = _vm.Timeline[ordinal];
+
+            _suppressFollowChange = true;
+            try
+            {
+                TranscriptList.ScrollIntoView(item);
+                TranscriptList.UpdateLayout();
+
+                // ScrollIntoView stops as soon as the item is merely visible; nudge it up so
+                // the surrounding conversation is readable.
+                if (FindScroller() is { } scroller
+                    && TranscriptList.ItemContainerGenerator.ContainerFromItem(item) is FrameworkElement container)
+                {
+                    var offset = container.TransformToAncestor(scroller).Transform(default).Y;
+                    scroller.ScrollToVerticalOffset(scroller.VerticalOffset + offset - 90);
+                }
+            }
+            catch (InvalidOperationException) { /* container recycled mid-scroll */ }
+            finally { _suppressFollowChange = false; }
+        });
+    }
+
+    private ScrollViewer? FindScroller()
+    {
+        DependencyObject node = TranscriptList;
+        while (node is not null)
+        {
+            if (VisualTreeHelper.GetChildrenCount(node) == 0) return null;
+            node = VisualTreeHelper.GetChild(node, 0);
+            if (node is ScrollViewer sv) return sv;
+        }
+        return null;
     }
 
     /// <summary>

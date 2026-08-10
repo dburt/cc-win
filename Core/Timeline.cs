@@ -127,6 +127,13 @@ public sealed class TimelineBuilder
 {
     private readonly Dictionary<string, ToolItem> _openTools = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Raised when a tool_result is matched back to its call. The search index needs this:
+    /// a tool's output arrives in a later record, so the text it indexed at call time is
+    /// incomplete until the result lands.
+    /// </summary>
+    public event Action<ToolItem>? ToolCompleted;
+
     private static readonly HashSet<string> Skipped = new(StringComparer.Ordinal)
     {
         "mode", "permission-mode", "file-history-snapshot", "file-history-delta",
@@ -199,6 +206,7 @@ public sealed class TimelineBuilder
             {
                 tool.Complete(r);
                 _openTools.Remove(id);
+                ToolCompleted?.Invoke(tool);
             }
         }
 

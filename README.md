@@ -21,9 +21,13 @@ as they grow, so a session you are running right now streams into the window as 
   rendered inline, and a date divider marks each new day.
 - **Session details** — working directory, git branch, model, elapsed time, message and tool
   counts, and cumulative input / output / cache-read / cache-write token usage.
-- **Filters** — `Ctrl+K` filters the session list, `Ctrl+F` searches the open transcript, and
-  the Thinking / Tools / System pills control how much detail is shown. API errors always
-  stay visible.
+- **Full-text search across every session** — `Ctrl+K` searches message bodies, thinking,
+  tool calls and tool output in every transcript it can see, not just the open one. Results
+  show the matching text in context with the session and timestamp; clicking one opens that
+  session scrolled to that exact message. Sessions whose *content* matched stay listed in the
+  tree even when their titles do not.
+- **Filters** — `Ctrl+F` searches within the open transcript, and the Thinking / Tools /
+  System pills control how much detail is shown. API errors always stay visible.
 - **Export** a transcript to Markdown, reveal the `.jsonl` in Explorer, or copy its path.
 
 ## Build
@@ -67,6 +71,8 @@ GDI+ and some shell consumers do not decode PNG-compressed icon entries.
 | `--session <text>` | Open the first session whose title, id, path or model matches `<text>` |
 | `--root <dir>` | Scan an extra history folder — an archived or copied `projects` tree |
 | `--find <text>` | Pre-fill the transcript search, so the session opens filtered and highlighted |
+| `--search <text>` | Run a full-text search across all sessions on startup |
+| `--open <n>` | With `--search`, jump straight to the nth result (0-based) |
 | `--shot <file> [secs]` | Render the window to a PNG after `secs` and exit (used for the screenshot above) |
 | `--expand` | With `--shot`, expand tool and thinking blocks before capturing |
 
@@ -92,6 +98,28 @@ A few things worth knowing about the format, since they shape what you see:
   is lossy for directories that contain real dashes. The app prefers the authoritative `cwd`
   recorded inside the transcript and only falls back to decoding the folder name.
 
+## How search works
+
+There is no persisted index. The first search over a session parses it once into plain-text
+records; later searches only read the bytes the file has grown by, reusing the same tail
+reader as the transcript view. That reuse is load-bearing rather than incidental: because the
+index is produced by the *same* timeline builder, a hit's ordinal is exactly the transcript
+item's ordinal, which is what lets a result scroll to the right message.
+
+Two consequences worth knowing:
+
+- A tool's output arrives in a later record than its call, so the builder raises an event when
+  it pairs them and the index rewrites that record — otherwise tool output would be missing
+  from search until the app restarted.
+- Retained text is capped (~32M characters); past that, the least recently searched sessions
+  are dropped and re-read on demand. Results are capped at 300 per query, and the summary line
+  says so explicitly rather than quietly truncating.
+
+Typing filters the session list immediately; the content scan is debounced and runs off the UI
+thread, and an in-flight scan is cancelled when the query changes. New sessions appearing
+re-run an active query, but a session merely *growing* does not, so results hold still while
+you click them.
+
 ## Layout
 
 | Path | Contents |
@@ -99,6 +127,7 @@ A few things worth knowing about the format, since they shape what you see:
 | `Core/Model.cs` | Record and content-block parsing from JSON |
 | `Core/SessionTail.cs` | Incremental byte-offset reader; rolling per-session summary |
 | `Core/Timeline.cs` | Records → renderable items, and tool-call/result pairing |
+| `Core/SearchIndex.cs` | Lazy per-session text index and the cross-session search |
 | `Core/Discovery.cs` | Windows + WSL history-root discovery |
 | `MainViewModel.cs` | Scanning, polling, filtering, commands |
 | `Ui/MarkdownBlock.cs` | The lightweight Markdown renderer |

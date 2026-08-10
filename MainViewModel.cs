@@ -149,6 +149,14 @@ public sealed class MainViewModel : Observable
     private TimelineBuilder _builder = new();
     private bool _polling;
 
+    private readonly SearchEngine _search = new();
+    private readonly DispatcherTimer _searchDebounce;
+    private CancellationTokenSource? _searchCancel;
+    private HashSet<string> _contentMatches = new(StringComparer.OrdinalIgnoreCase);
+    private bool _searching;
+    private string _searchSummary = "";
+    private Task _load = Task.CompletedTask;
+
     private SessionVM? _selected;
     private string _sessionFilter = "";
     private string _transcriptFilter = "";
@@ -171,8 +179,17 @@ public sealed class MainViewModel : Observable
         ExpandAllToolsCommand = new RelayCommand(() => SetToolExpansion(true));
         CollapseAllToolsCommand = new RelayCommand(() => SetToolExpansion(false));
 
+        JumpCommand = new RelayCommand(p => { if (p is SearchHit hit) _ = JumpAsync(hit); });
+        ClearSearchCommand = new RelayCommand(() => SessionFilter = "");
+
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) => _ = PollAsync();
+
+        // Typing filters the session list instantly; scanning transcript bodies waits for a pause.
+        _searchDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(280) };
+        _searchDebounce.Tick += (_, _) => { _searchDebounce.Stop(); _ = RunContentSearchAsync(); };
+
+        SearchResults.CollectionChanged += (_, _) => Raise(nameof(HasSearchResults));
     }
 
     public ObservableCollection<ProjectVM> Projects { get; } = new();
@@ -185,8 +202,11 @@ public sealed class MainViewModel : Observable
     public ICommand ExportCommand { get; }
     public ICommand ExpandAllToolsCommand { get; }
     public ICommand CollapseAllToolsCommand { get; }
+    public ICommand JumpCommand { get; }
+    public ICommand ClearSearchCommand { get; }
 
     public event EventHandler? ScrollToEndRequested;
+    public event EventHandler<int>? ScrollToItemRequested;
 
     /// <summary>Optional "--session &lt;text&gt;" filter used to pick the session opened at startup.</summary>
     public string? StartupSessionQuery { get; set; }
@@ -204,7 +224,7 @@ public sealed class MainViewModel : Observable
             if (!Set(ref _selected, value)) return;
             Raise(nameof(HasSelection));
             Raise(nameof(SelectedDetail));
-            _ = LoadTranscriptAsync();
+            _load = LoadTranscriptAsync();
         }
     }
 
@@ -214,14 +234,41 @@ public sealed class MainViewModel : Observable
     public string SessionFilter
     {
         get => _sessionFilter;
-        set { if (Set(ref _sessionFilter, value)) ApplySessionFilter(); }
+        set
+        {
+            if (!Set(ref _sessionFilter, value)) return;
+            ApplySessionFilter();
+            Raise(nameof(HighlightTerm));
+            QueueContentSearch();
+        }
     }
 
     public string TranscriptFilter
     {
         get => _transcriptFilter;
-        set { if (Set(ref _transcriptFilter, value)) { TimelineView.Refresh(); Raise(nameof(VisibleCountText)); } }
+        set
+        {
+            if (!Set(ref _transcriptFilter, value)) return;
+            TimelineView.Refresh();
+            Raise(nameof(VisibleCountText));
+            Raise(nameof(HighlightTerm));
+        }
     }
+
+    /// <summary>
+    /// What the transcript paints as a match. The in-transcript filter wins; otherwise a
+    /// content search term is highlighted too, so a jumped-to hit is visible on arrival.
+    /// </summary>
+    public string HighlightTerm =>
+        !string.IsNullOrWhiteSpace(TranscriptFilter) ? TranscriptFilter
+        : SessionFilter.Trim().Length >= SearchEngine.MinQueryLength ? SessionFilter
+        : "";
+
+    public ObservableCollection<SearchHit> SearchResults { get; } = new();
+
+    public bool HasSearchResults => SearchResults.Count > 0;
+    public bool IsSearching { get => _searching; private set => Set(ref _searching, value); }
+    public string SearchSummary { get => _searchSummary; private set => Set(ref _searchSummary, value); }
 
     public bool ShowThinking { get => _showThinking; set { if (Set(ref _showThinking, value)) RefreshTimelineView(); } }
     public bool ShowTools { get => _showTools; set { if (Set(ref _showTools, value)) RefreshTimelineView(); } }
@@ -285,6 +332,7 @@ public sealed class MainViewModel : Observable
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var pending = new List<(SessionVM Session, FileFact Fact)>();
             var addedProject = false;
+            var rosterChanged = false;
 
             foreach (var fact in facts)
             {
@@ -304,6 +352,7 @@ public sealed class MainViewModel : Observable
                     _sessions[fact.Path] = session;
                     project.Sessions.Add(session);
                     pending.Add((session, fact));
+                    rosterChanged = true;
                 }
                 else if (force || fact.Length != session.Length || fact.LastWriteUtc != session.LastWriteUtc)
                 {
@@ -316,6 +365,8 @@ public sealed class MainViewModel : Observable
                 var session = _sessions[gone];
                 session.Project.Sessions.Remove(session);
                 _sessions.Remove(gone);
+                _search.Forget(gone);
+                rosterChanged = true;
                 if (ReferenceEquals(Selected, session)) Selected = null;
             }
 
@@ -340,6 +391,11 @@ public sealed class MainViewModel : Observable
 
             ApplySessionFilter();
             UpdateStatus(facts.Count);
+
+            // Sessions appearing or disappearing changes what a live query should match. Growth
+            // alone deliberately does not re-run it, so results stay still while you click them.
+            if (rosterChanged && SessionFilter.Trim().Length >= SearchEngine.MinQueryLength)
+                QueueContentSearch();
 
             if (!_autoSelected && Projects.Count > 0)
             {
@@ -376,6 +432,92 @@ public sealed class MainViewModel : Observable
             ? "No Claude Code transcripts found. Checked ~/.claude/projects on Windows and in every WSL distro."
             : $"{fileCount} sessions across {Projects.Count} projects, {roots} location{(roots == 1 ? "" : "s")}"
               + (live > 0 ? $" · {live} active now" : "");
+    }
+
+    // ---------- content search ----------
+
+    private const int MaxHits = 300;
+
+    private void QueueContentSearch()
+    {
+        _searchCancel?.Cancel();
+        _searchDebounce.Stop();
+
+        if (SessionFilter.Trim().Length < SearchEngine.MinQueryLength)
+        {
+            SearchResults.Clear();
+            SearchSummary = "";
+            IsSearching = false;
+            if (_contentMatches.Count > 0)
+            {
+                _contentMatches = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                ApplySessionFilter();
+            }
+            return;
+        }
+
+        IsSearching = true;
+        _searchDebounce.Start();
+    }
+
+    private async Task RunContentSearchAsync()
+    {
+        var query = SessionFilter.Trim();
+        if (query.Length < SearchEngine.MinQueryLength) { IsSearching = false; return; }
+
+        _searchCancel?.Cancel();
+        var cancel = _searchCancel = new CancellationTokenSource();
+        var token = cancel.Token;
+
+        // Newest first, so the most relevant sessions fill the result cap.
+        var targets = _sessions.Values.OrderByDescending(s => s.LastWriteUtc).ToList();
+
+        SearchOutcome outcome;
+        try
+        {
+            outcome = await Task.Run(() => _search.Search(query, targets, MaxHits, token), token);
+        }
+        catch (OperationCanceledException) { return; }
+        catch (Exception ex)
+        {
+            IsSearching = false;
+            SearchSummary = "Search failed: " + ex.Message;
+            return;
+        }
+
+        if (token.IsCancellationRequested || !string.Equals(query, SessionFilter.Trim(), StringComparison.Ordinal))
+            return;
+
+        SearchResults.Clear();
+        foreach (var hit in outcome.Hits) SearchResults.Add(hit);
+
+        _contentMatches = outcome.MatchedPaths;
+        ApplySessionFilter();
+
+        IsSearching = false;
+        SearchSummary = outcome.TotalMatches == 0
+            ? "No messages match"
+            : outcome.Truncated
+                ? $"Showing first {outcome.Hits.Count} of {outcome.TotalMatches:N0} matches in {outcome.SessionsMatched} sessions"
+                : $"{outcome.TotalMatches:N0} match{(outcome.TotalMatches == 1 ? "" : "es")} in {outcome.SessionsMatched} session{(outcome.SessionsMatched == 1 ? "" : "s")}";
+    }
+
+    private async Task JumpAsync(SearchHit hit)
+    {
+        if (!ReferenceEquals(Selected, hit.Session)) Selected = hit.Session;
+        await _load;
+
+        // A hit is useless if its category is switched off or filtered away.
+        switch (hit.Kind)
+        {
+            case ItemKind.Thinking: ShowThinking = true; break;
+            case ItemKind.Tool: ShowTools = true; break;
+            case ItemKind.Notice: ShowNotices = true; break;
+        }
+        if (!string.IsNullOrEmpty(TranscriptFilter)) TranscriptFilter = "";
+
+        Follow = false;
+        ScrollToItemRequested?.Invoke(this, hit.Ordinal);
     }
 
     // ---------- transcript ----------
@@ -486,7 +628,11 @@ public sealed class MainViewModel : Observable
             var any = false;
             foreach (var session in project.Sessions)
             {
-                var hit = needle.Length == 0 || session.Haystack.Contains(needle, StringComparison.Ordinal);
+                // Metadata match or a message inside it matched — otherwise searching for a
+                // phrase you only ever said mid-conversation empties the whole session list.
+                var hit = needle.Length == 0
+                          || session.Haystack.Contains(needle, StringComparison.Ordinal)
+                          || _contentMatches.Contains(session.Path);
                 session.IsVisible = hit;
                 any |= hit;
             }
