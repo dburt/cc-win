@@ -15,9 +15,14 @@ echo "Building $CONFIG from $SRC_UNC"
 
 powershell.exe -NoProfile -Command "
   \$dest = Join-Path \$env:LOCALAPPDATA 'ClaudeSessions'
+  \$srcDir = Split-Path '$SRC_UNC'
   # A running instance holds a lock on its own .exe and the copy step fails.
   \$live = Get-Process ClaudeSessions -ErrorAction SilentlyContinue
   if (\$live) { Write-Host 'Closing running instance…'; \$live | Stop-Process -Force; Start-Sleep -Milliseconds 400 }
+  # Incremental builds over \\wsl.localhost have been seen to skip recompiling changed XAML
+  # (stale UI shipped, exit code 0) — wipe intermediate and output artifacts every time.
+  Remove-Item (Join-Path \$srcDir 'obj') -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item \$dest -Recurse -Force -ErrorAction SilentlyContinue
   dotnet build '$SRC_UNC' -c $CONFIG -o \$dest --nologo -v minimal
   if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE }
   Write-Host ''
