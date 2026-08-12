@@ -691,6 +691,11 @@
                                 <TextBlock Text="{Binding TotalTokens}" FontSize="15"
                                            Foreground="{StaticResource ClaudeBrush}"/>
                             </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="1">
+                                <TextBlock Text="Est. cost (AUD)" Style="{StaticResource DetailKey}"/>
+                                <TextBlock Text="{Binding Cost}" FontSize="15"
+                                           Foreground="{StaticResource ClaudeBrush}"/>
+                            </StackPanel>
                         </Grid>
 
                         <Border Height="1" Background="{StaticResource BorderBrush2}" Margin="0,2,0,14"/>

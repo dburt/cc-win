@@ -89,6 +89,12 @@ public static class Format
         _ => $"{n / 1_000_000.0:0.##}M",
     };
 
+    public static string AudCost(double usd)
+    {
+        var aud = usd * ModelPricing.UsdToAud;
+        return aud < 0.01 ? $"A${aud:0.00##}" : $"A${aud:0.00}";
+    }
+
     public static string Ago(DateTimeOffset? when)
     {
         if (when is not { } t) return "";

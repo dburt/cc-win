@@ -746,6 +746,7 @@ public sealed class SessionDetail
         CacheWrite = Format.Tokens(d.Usage.CacheCreate);
         CacheRead = Format.Tokens(d.Usage.CacheRead);
         TotalTokens = Format.Tokens(d.Usage.Total);
+        Cost = d.Usage.EstimateCostUsd(d.Model) is { } cost ? Format.AudCost(cost) : "—";
     }
 
     public string Title { get; }
@@ -771,6 +772,7 @@ public sealed class SessionDetail
     public string CacheWrite { get; }
     public string CacheRead { get; }
     public string TotalTokens { get; }
+    public string Cost { get; }
 }
 
 /// <summary>In-place sort that reorders by Move, so bound selection survives a re-sort.</summary>

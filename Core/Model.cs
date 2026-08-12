@@ -26,6 +26,67 @@ public sealed class Usage
         Input += o.Input; Output += o.Output;
         CacheCreate += o.CacheCreate; CacheRead += o.CacheRead;
     }
+
+    /// <summary>Null when the model isn't in the pricing table — never guess a rate.</summary>
+    public double? EstimateCostUsd(string? model)
+    {
+        if (ModelPricing.Find(model) is not { } rate) return null;
+        return Input / 1_000_000.0 * rate.InputPerMTok
+             + Output / 1_000_000.0 * rate.OutputPerMTok
+             + CacheCreate / 1_000_000.0 * rate.InputPerMTok * ModelPricing.CacheWriteMultiplier
+             + CacheRead / 1_000_000.0 * rate.InputPerMTok * ModelPricing.CacheReadMultiplier;
+    }
+}
+
+/// <summary>
+/// Hardcoded USD-per-million-token rates, keyed by model-id prefix (snapshot dates and
+/// dateless aliases both start with the family prefix). Cache write/read costs aren't tracked
+/// per model — Anthropic applies the same 1.25x / 0.1x multiplier on input price across the
+/// catalog, so they're derived rather than duplicated. Snapshot: platform.claude.com pricing,
+/// August 2026. Update this table when new models ship.
+/// </summary>
+public static class ModelPricing
+{
+    public const double CacheWriteMultiplier = 1.25;
+    public const double CacheReadMultiplier = 0.1;
+
+    /// <summary>Static USD→AUD rate — not live, update occasionally.</summary>
+    public const double UsdToAud = 1.55;
+
+    private static readonly (string Prefix, double InputPerMTok, double OutputPerMTok)[] Rates =
+        new (string Prefix, double InputPerMTok, double OutputPerMTok)[]
+        {
+            ("claude-fable-5", 10, 50),
+            ("claude-mythos-5", 10, 50),
+            ("claude-mythos-preview", 10, 50),
+            ("claude-opus-5", 5, 25),
+            ("claude-opus-4-8", 5, 25),
+            ("claude-opus-4-7", 5, 25),
+            ("claude-opus-4-6", 5, 25),
+            ("claude-opus-4-5", 5, 25),
+            ("claude-opus-4-1", 15, 75),
+            ("claude-opus-4-", 15, 75),      // dated Opus 4 snapshot, e.g. claude-opus-4-20250514
+            ("claude-3-opus", 15, 75),
+            ("claude-sonnet-5", 2, 10),
+            ("claude-sonnet-4-6", 3, 15),
+            ("claude-sonnet-4-5", 3, 15),
+            ("claude-sonnet-4-", 3, 15),     // dated Sonnet 4 snapshot
+            ("claude-3-7-sonnet", 3, 15),
+            ("claude-3-5-sonnet", 3, 15),
+            ("claude-3-sonnet", 3, 15),
+            ("claude-haiku-4-5", 1, 5),
+            ("claude-3-5-haiku", 0.8, 4),
+            ("claude-3-haiku", 0.25, 1.25),
+        }.OrderByDescending(r => r.Prefix.Length).ToArray();
+
+    public static (double InputPerMTok, double OutputPerMTok)? Find(string? model)
+    {
+        if (string.IsNullOrEmpty(model)) return null;
+        foreach (var r in Rates)
+            if (model.StartsWith(r.Prefix, StringComparison.OrdinalIgnoreCase))
+                return (r.InputPerMTok, r.OutputPerMTok);
+        return null;
+    }
 }
 
 /// <summary>A single parsed line of a session .jsonl transcript.</summary>
