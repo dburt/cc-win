@@ -1,6 +1,6 @@
 # Claude Code — Session History
 
-A native Windows (WPF / .NET 9) app for browsing your Claude Code session history **live**.
+A native Windows (WPF / .NET 10) app for browsing your Claude Code session history **live**.
 It reads the `.jsonl` transcripts Claude Code writes under `~/.claude/projects` and tails them
 as they grow, so a session you are running right now streams into the window as it happens.
 
@@ -32,7 +32,7 @@ as they grow, so a session you are running right now streams into the window as 
 
 ## Build
 
-Requires the .NET 9 SDK **on Windows** (already present if `dotnet --list-sdks` works from
+Requires the .NET 10 SDK **on Windows** (already present if `dotnet --list-sdks` works from
 PowerShell). From WSL:
 
 ```bash
