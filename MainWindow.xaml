@@ -38,7 +38,7 @@
         <Style x:Key="DetailKey" TargetType="TextBlock" BasedOn="{StaticResource Label}">
             <Setter Property="Margin" Value="0,0,0,1"/>
         </Style>
-        <Style x:Key="DetailValue" TargetType="TextBlock">
+        <Style x:Key="DetailValue" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
