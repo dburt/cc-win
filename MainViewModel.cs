@@ -171,10 +171,9 @@ public sealed class MainViewModel : Observable
 
         RefreshCommand = new RelayCommand(() => _ = PollAsync(force: true));
         RevealCommand = new RelayCommand(Reveal, _ => Selected is not null);
-        CopyPathCommand = new RelayCommand(_ =>
-        {
-            if (Selected is { } s) { try { Clipboard.SetText(s.Path); } catch { } }
-        }, _ => Selected is not null);
+        CopyTextCommand = new RelayCommand(
+            p => { try { Clipboard.SetText((string)p!); } catch { } },
+            p => p is string { Length: > 0 });
         ExportCommand = new RelayCommand(Export, _ => Selected is not null);
         ExpandAllToolsCommand = new RelayCommand(() => SetToolExpansion(true));
         CollapseAllToolsCommand = new RelayCommand(() => SetToolExpansion(false));
@@ -204,7 +203,8 @@ public sealed class MainViewModel : Observable
 
     public ICommand RefreshCommand { get; }
     public ICommand RevealCommand { get; }
-    public ICommand CopyPathCommand { get; }
+    /// <summary>Copies its parameter to the clipboard; used by the detail panel's copy icons.</summary>
+    public ICommand CopyTextCommand { get; }
     public ICommand ExportCommand { get; }
     public ICommand ExpandAllToolsCommand { get; }
     public ICommand CollapseAllToolsCommand { get; }

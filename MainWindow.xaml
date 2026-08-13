@@ -38,6 +38,44 @@
         <Style x:Key="DetailKey" TargetType="TextBlock" BasedOn="{StaticResource Label}">
             <Setter Property="Margin" Value="0,0,0,1"/>
         </Style>
+        <!-- copy-to-clipboard affordance on a detail field; CommandParameter is the text to copy -->
+        <Style x:Key="CopyIcon" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="Transparent" CornerRadius="3" Padding="3,2">
+                            <!-- front sheet, plus the part of the sheet behind it that stays visible -->
+                            <Canvas Width="13" Height="13">
+                                <Path x:Name="Ink" StrokeThickness="1.15"
+                                      Stroke="{DynamicResource FaintBrush}"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Data="M 1.2,5.6 A 1.4,1.4 0 0 1 2.6,4.2 L 7.6,4.2
+                                            A 1.4,1.4 0 0 1 9,5.6 L 9,10.6
+                                            A 1.4,1.4 0 0 1 7.6,12 L 2.6,12
+                                            A 1.4,1.4 0 0 1 1.2,10.6 Z
+                                            M 4,4.2 L 4,2.4 A 1.4,1.4 0 0 1 5.4,1 L 10.4,1
+                                            A 1.4,1.4 0 0 1 11.8,2.4 L 11.8,7.4
+                                            A 1.4,1.4 0 0 1 10.4,8.8 L 9,8.8"/>
+                            </Canvas>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="B" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                <Setter TargetName="Ink" Property="Stroke" Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="DetailValue" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
@@ -706,7 +744,15 @@
                         <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="0,2,0,14"/>
                         <TextBlock Text="FILE" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Session id" Style="{StaticResource DetailKey}"/>
+                        <Grid>
+                            <TextBlock Text="Session id" Style="{StaticResource DetailKey}"
+                                       VerticalAlignment="Center"/>
+                            <Button Style="{StaticResource CopyIcon}" HorizontalAlignment="Right"
+                                    ToolTip="Copy session id" AutomationProperties.Name="Copy session id"
+                                    Command="{Binding DataContext.CopyTextCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding SessionId}"/>
+                        </Grid>
                         <TextBlock Text="{Binding SessionId}" Style="{StaticResource DetailValue}"
                                    FontFamily="{StaticResource MonoFont}" FontSize="11"/>
 
@@ -720,7 +766,15 @@
                         <TextBlock Text="Claude Code version" Style="{StaticResource DetailKey}"/>
                         <TextBlock Text="{Binding Version}" Style="{StaticResource DetailValue}"/>
 
-                        <TextBlock Text="Path" Style="{StaticResource DetailKey}"/>
+                        <Grid>
+                            <TextBlock Text="Path" Style="{StaticResource DetailKey}"
+                                       VerticalAlignment="Center"/>
+                            <Button Style="{StaticResource CopyIcon}" HorizontalAlignment="Right"
+                                    ToolTip="Copy path" AutomationProperties.Name="Copy path"
+                                    Command="{Binding DataContext.CopyTextCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding Path}"/>
+                        </Grid>
                         <TextBlock Text="{Binding Path}" Style="{StaticResource DetailValue}"
                                    FontFamily="{StaticResource MonoFont}" FontSize="10.5"
                                    Foreground="{DynamicResource MutedBrush}"/>
@@ -744,8 +798,6 @@
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button Content="Reveal in Explorer" Style="{StaticResource GhostButton}"
                             Command="{Binding RevealCommand}"/>
-                    <Button Content="Copy path" Style="{StaticResource GhostButton}" Margin="4,0,0,0"
-                            Command="{Binding CopyPathCommand}"/>
                     <Button Content="Export .md" Style="{StaticResource GhostButton}" Margin="4,0,0,0"
                             Command="{Binding ExportCommand}"/>
                 </StackPanel>
