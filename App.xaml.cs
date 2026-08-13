@@ -20,6 +20,8 @@ public partial class App : Application
         // A transcript can vanish mid-read when a distro stops; never take the app down for it.
         DispatcherUnhandledException += OnUnhandled;
         AppDomain.CurrentDomain.UnhandledException += (_, args) => Log("FATAL: " + args.ExceptionObject);
+        // Before base: MainWindow is created inside it, and must paint its first frame themed.
+        ThemeManager.Apply(AppSettings.Current.Theme);
         base.OnStartup(e);
     }
 

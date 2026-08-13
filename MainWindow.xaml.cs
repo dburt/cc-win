@@ -54,6 +54,13 @@ public partial class MainWindow : Window
         MaybeSelfCapture();
     }
 
+    /// <summary>The title bar can only be themed once the window has an HWND.</summary>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        ThemeManager.ApplyTitleBar(this);
+    }
+
     /// <summary>Dev aid: "--shot &lt;path&gt; [seconds]" renders the window to a PNG and exits.</summary>
     private void MaybeSelfCapture()
     {

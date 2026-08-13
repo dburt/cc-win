@@ -181,6 +181,12 @@ public sealed class MainViewModel : Observable
 
         JumpCommand = new RelayCommand(p => { if (p is SearchHit hit) _ = JumpAsync(hit); });
         ClearSearchCommand = new RelayCommand(() => SessionFilter = "");
+        CycleThemeCommand = new RelayCommand(() => Theme = Theme switch
+        {
+            ThemePreference.System => ThemePreference.Light,
+            ThemePreference.Light => ThemePreference.Dark,
+            _ => ThemePreference.System,
+        });
 
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) => _ = PollAsync();
@@ -204,6 +210,7 @@ public sealed class MainViewModel : Observable
     public ICommand CollapseAllToolsCommand { get; }
     public ICommand JumpCommand { get; }
     public ICommand ClearSearchCommand { get; }
+    public ICommand CycleThemeCommand { get; }
 
     public event EventHandler? ScrollToEndRequested;
     public event EventHandler<int>? ScrollToItemRequested;
@@ -274,6 +281,27 @@ public sealed class MainViewModel : Observable
     public bool ShowTools { get => _showTools; set { if (Set(ref _showTools, value)) RefreshTimelineView(); } }
     public bool ShowNotices { get => _showNotices; set { if (Set(ref _showNotices, value)) RefreshTimelineView(); } }
     public bool Follow { get => _follow; set { if (Set(ref _follow, value) && value) ScrollToEndRequested?.Invoke(this, EventArgs.Empty); } }
+
+    public ThemePreference Theme
+    {
+        get => AppSettings.Current.Theme;
+        set
+        {
+            if (AppSettings.Current.Theme == value) return;
+            AppSettings.Current.Theme = value;
+            AppSettings.Current.Save();
+            ThemeManager.Apply(value);
+            Raise(nameof(Theme));
+            Raise(nameof(ThemeLabel));
+        }
+    }
+
+    public string ThemeLabel => Theme switch
+    {
+        ThemePreference.Light => "Light",
+        ThemePreference.Dark => "Dark",
+        _ => "Auto",
+    };
 
     public string VisibleCountText
     {

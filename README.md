@@ -28,6 +28,11 @@ as they grow, so a session you are running right now streams into the window as 
   tree even when their titles do not.
 - **Filters** — `Ctrl+F` searches within the open transcript, and the Thinking / Tools /
   System pills control how much detail is shown. API errors always stay visible.
+- **A reading view, light or dark.** Message bodies are set in a serif face with generous line
+  height and a fixed reading measure, so a long answer reads like a page rather than a log. The
+  appearance button cycles **Auto / Light / Dark** — Auto follows the Windows app theme — and
+  the choice is remembered across launches. Switching recolours the running window, title bar
+  included, without a restart.
 - **Export** a transcript to Markdown, reveal the `.jsonl` in Explorer, or copy its path.
 
 ## Build
@@ -120,6 +125,23 @@ thread, and an in-flight scan is cancelled when the query changes. New sessions 
 re-run an active query, but a session merely *growing* does not, so results hold still while
 you click them.
 
+## How theming works
+
+`Theme.xaml` declares one `SolidColorBrush` per themed colour; `ThemePalette` holds the two
+colour sets and `ThemeManager` **replaces** those dictionary entries when the theme changes.
+Two constraints shaped that design, and both are easy to trip over:
+
+- Every themed colour must be referenced with `DynamicResource`, not `StaticResource`. A
+  `StaticResource` resolves once at load and never hears about the swap.
+- The brushes cannot simply be recoloured in place. WPF freezes some of them while sealing
+  styles and templates, and assigning to a frozen brush throws — so the entry is replaced
+  rather than mutated.
+
+`MarkdownBlock` renders into a `FlowDocument`, which bakes in whatever brush instance it is
+given, so its code, quote, bullet and link colours are attached with `SetResourceReference`
+instead. That also avoids an ordering trap: swapping the foreground rebuilds the document
+synchronously, part-way through the swap, while the remaining brushes are still stale.
+
 ## Layout
 
 | Path | Contents |
@@ -132,6 +154,9 @@ you click them.
 | `MainViewModel.cs` | Scanning, polling, filtering, commands |
 | `Ui/MarkdownBlock.cs` | The lightweight Markdown renderer |
 | `MainWindow.xaml` | Layout and the per-item templates |
-| `Theme.xaml` | Dark palette and control styles |
+| `Theme.xaml` | Control styles, and the brush keys both palettes fill |
+| `Core/ThemePalette.cs` | The light and dark colour sets |
+| `Core/ThemeManager.cs` | Runtime theme swapping and OS-theme detection |
+| `Core/AppSettings.cs` | The remembered appearance choice |
 
 No third-party packages — everything is in-box .NET.

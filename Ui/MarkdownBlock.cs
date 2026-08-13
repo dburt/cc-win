@@ -64,14 +64,18 @@ public class MarkdownBlock : RichTextBox
     private FontFamily Mono =>
         TryFindResource("MonoFont") as FontFamily ?? new FontFamily("Consolas");
 
-    private Brush CodeBg =>
-        TryFindResource("CodeBackgroundBrush") as Brush ?? Brushes.Transparent;
-
-    private Brush Subtle =>
-        TryFindResource("MutedBrush") as Brush ?? Brushes.Gray;
-
-    private Brush Accent =>
-        TryFindResource("LinkBrush") as Brush ?? Brushes.SteelBlue;
+    /// <summary>
+    /// Themed document brushes are attached as resource references, not resolved instances: a
+    /// theme switch replaces the dictionary entries, and anything baked in here would keep the
+    /// old colour. It also sidesteps an ordering trap — swapping the foreground rebuilds this
+    /// document synchronously, part-way through the swap, when the rest is still stale.
+    /// </summary>
+    private static T Themed<T>(T element, DependencyProperty property, string key)
+        where T : FrameworkContentElement
+    {
+        element.SetResourceReference(property, key);
+        return element;
+    }
 
     private object? _builtWith;
 
@@ -88,7 +92,7 @@ public class MarkdownBlock : RichTextBox
             FontFamily = FontFamily,
             FontSize = FontSize,
             Foreground = Foreground,
-            LineHeight = FontSize * 1.5,
+            LineHeight = FontSize * 1.68,
         };
 
         if (!string.IsNullOrEmpty(Markdown))
@@ -216,7 +220,7 @@ public class MarkdownBlock : RichTextBox
                    && !(IsTableRow(lines[i]) && i + 1 < lines.Length && IsTableDivider(lines[i + 1])))
                 para.Add(lines[i++]);
 
-            yield return Paragraph(string.Join("\n", para), new Thickness(0, 0, 0, 8));
+            yield return Paragraph(string.Join("\n", para), new Thickness(0, 0, 0, FontSize * 0.7));
         }
     }
 
@@ -254,13 +258,12 @@ public class MarkdownBlock : RichTextBox
             {
                 var para = new Paragraph { Margin = new Thickness(0), FontSize = Math.Max(11, FontSize - 1) };
                 AddInlines(para, c < rows[r].Length ? rows[r][c] : "");
-                row.Cells.Add(new TableCell(para)
+                row.Cells.Add(Themed(new TableCell(para)
                 {
                     Padding = new Thickness(9, 5, 9, 5),
-                    BorderBrush = Subtle,
                     BorderThickness = new Thickness(0, 0, 0, isHeader ? 1 : 0.4),
                     FontWeight = isHeader ? FontWeights.SemiBold : FontWeights.Normal,
-                });
+                }, TableCell.BorderBrushProperty, "MutedBrush"));
             }
             group.Rows.Add(row);
         }
@@ -283,8 +286,12 @@ public class MarkdownBlock : RichTextBox
 
     private Block ListLine(Marker marker)
     {
-        var p = new Paragraph { Margin = new Thickness(12 + marker.Depth * 18, 0, 0, 3), TextIndent = -12 };
-        p.Inlines.Add(new Run(marker.Glyph + "  ") { Foreground = Subtle });
+        var p = new Paragraph
+        {
+            Margin = new Thickness(14 + marker.Depth * 20, 0, 0, FontSize * 0.5),
+            TextIndent = -14,
+        };
+        p.Inlines.Add(Themed(new Run(marker.Glyph + "  "), TextElement.ForegroundProperty, "LinkBrush"));
         AddInlines(p, marker.Content);
         return p;
     }
@@ -293,9 +300,9 @@ public class MarkdownBlock : RichTextBox
     {
         var p = new Paragraph
         {
-            Margin = new Thickness(0, level <= 2 ? 12 : 8, 0, 5),
+            Margin = new Thickness(0, FontSize * (level <= 2 ? 1.15 : 0.9), 0, FontSize * 0.45),
             FontSize = FontSize + (level <= 1 ? 5 : level == 2 ? 3 : 1),
-            FontWeight = FontWeights.SemiBold,
+            FontWeight = FontWeights.Bold,
         };
         AddInlines(p, content);
         return p;
@@ -303,21 +310,20 @@ public class MarkdownBlock : RichTextBox
 
     private Block Quote(string content)
     {
-        var p = Paragraph(content, new Thickness(0, 2, 0, 8));
-        p.BorderBrush = Subtle;
+        var p = Paragraph(content, new Thickness(0, 2, 0, FontSize * 0.7));
         p.BorderThickness = new Thickness(3, 0, 0, 0);
         p.Padding = new Thickness(10, 2, 0, 2);
-        p.Foreground = Subtle;
+        Themed(p, Block.BorderBrushProperty, "MutedBrush");
+        Themed(p, TextElement.ForegroundProperty, "MutedBrush");
         return p;
     }
 
-    private Block Rule() => new Paragraph
+    private Block Rule() => Themed(new Paragraph
     {
         Margin = new Thickness(0, 6, 0, 10),
-        BorderBrush = Subtle,
         BorderThickness = new Thickness(0, 0, 0, 1),
         FontSize = 1,
-    };
+    }, Block.BorderBrushProperty, "MutedBrush");
 
     private Block CodeBlock(string code, string lang)
     {
@@ -325,13 +331,14 @@ public class MarkdownBlock : RichTextBox
         {
             FontFamily = Mono,
             FontSize = Math.Max(11, FontSize - 1),
-            Background = CodeBg,
             Padding = new Thickness(10, 8, 10, 8),
             Margin = new Thickness(0, 2, 0, 10),
             LineHeight = FontSize * 1.35,
         };
+        Themed(p, TextElement.BackgroundProperty, "CodeBackgroundBrush");
         if (!string.IsNullOrWhiteSpace(lang))
-            p.Inlines.InsertBefore(p.Inlines.FirstInline, new Run(lang + "\n") { Foreground = Subtle, FontSize = 10 });
+            p.Inlines.InsertBefore(p.Inlines.FirstInline,
+                Themed(new Run(lang + "\n") { FontSize = 10 }, TextElement.ForegroundProperty, "MutedBrush"));
         return p;
     }
 
@@ -358,12 +365,11 @@ public class MarkdownBlock : RichTextBox
 
             if (m.Groups["code"].Success)
             {
-                p.Inlines.Add(new Run(m.Value.Trim('`'))
+                p.Inlines.Add(Themed(new Run(m.Value.Trim('`'))
                 {
                     FontFamily = Mono,
                     FontSize = Math.Max(11, FontSize - 1),
-                    Background = CodeBg,
-                });
+                }, TextElement.BackgroundProperty, "CodeBackgroundBrush"));
             }
             else if (m.Groups["bold"].Success)
             {
@@ -378,9 +384,11 @@ public class MarkdownBlock : RichTextBox
                 var split = m.Value.IndexOf("](", StringComparison.Ordinal);
                 var label = m.Value[1..split];
                 var url = m.Value[(split + 2)..^1];
-                p.Inlines.Add(new Run(string.IsNullOrEmpty(label) ? url : label) { Foreground = Accent });
+                p.Inlines.Add(Themed(new Run(string.IsNullOrEmpty(label) ? url : label),
+                                     TextElement.ForegroundProperty, "LinkBrush"));
                 if (!string.IsNullOrEmpty(label))
-                    p.Inlines.Add(new Run($" ({url})") { Foreground = Subtle, FontSize = Math.Max(10, FontSize - 2) });
+                    p.Inlines.Add(Themed(new Run($" ({url})") { FontSize = Math.Max(10, FontSize - 2) },
+                                         TextElement.ForegroundProperty, "MutedBrush"));
             }
 
             pos = m.Index + m.Length;

@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:ClaudeSessions"
         Title="Claude Code — Session History"
         Height="900" Width="1500" MinHeight="480" MinWidth="900"
-        Background="{StaticResource WindowBrush}"
+        Background="{DynamicResource WindowBrush}"
         TextOptions.TextFormattingMode="Ideal"
         UseLayoutRounding="True"
         WindowStartupLocation="CenterScreen">
@@ -27,7 +27,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="B" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                <Setter TargetName="B" Property="Background" Value="{DynamicResource HoverBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -47,14 +47,14 @@
         <!-- shared left gutter: timestamp, plus a marker for subagent (sidechain) messages -->
         <DataTemplate x:Key="Gutter">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <TextBlock Text="↳" Foreground="{StaticResource ThinkBrush}" FontSize="11"
+                <TextBlock Text="↳" Foreground="{DynamicResource ThinkBrush}" FontSize="11"
                            Margin="0,0,4,0" VerticalAlignment="Top"
                            ToolTip="Message from a subagent"
                            Visibility="{Binding IsSidechain, Converter={StaticResource B2V}}"/>
                 <TextBlock Text="{Binding TimeText}" ToolTip="{Binding TimeTooltip}"
                            FontFamily="{StaticResource MonoFont}" FontSize="10.5"
                            VerticalAlignment="Top"
-                           Foreground="{StaticResource FaintBrush}"/>
+                           Foreground="{DynamicResource FaintBrush}"/>
             </StackPanel>
         </DataTemplate>
 
@@ -73,14 +73,15 @@
                 </Grid.ColumnDefinitions>
                 <ContentPresenter Grid.Column="0" Content="{Binding}" ContentTemplate="{StaticResource Gutter}"
                                   HorizontalAlignment="Right" Margin="0,7,10,0"/>
-                <Border Grid.Column="1" Background="#FF1C2233" CornerRadius="7"
-                        MaxWidth="900" HorizontalAlignment="Left"
-                        Padding="14,10,14,11">
+                <Border Grid.Column="1" Background="{DynamicResource UserBubbleBrush}" CornerRadius="12"
+                        BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                        MaxWidth="620" HorizontalAlignment="Left"
+                        Padding="20,13,20,15">
                     <StackPanel>
-                        <TextBlock Text="You" Foreground="{StaticResource UserBrush}"
-                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <local:MarkdownBlock Foreground="{StaticResource TextBrush}"
-                                             FontFamily="{StaticResource UiFont}" FontSize="13.5"
+                        <TextBlock Text="You" Foreground="{DynamicResource UserBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7"/>
+                        <local:MarkdownBlock Foreground="{DynamicResource TextBrush}"
+                                             FontFamily="{StaticResource SerifFont}" FontSize="15.5"
                                              Highlight="{Binding DataContext.HighlightTerm,
                                                          RelativeSource={RelativeSource AncestorType=Window}}"
                                              Markdown="{Binding Text}"/>
@@ -107,18 +108,19 @@
                 </Grid.ColumnDefinitions>
                 <ContentPresenter Grid.Column="0" Content="{Binding}" ContentTemplate="{StaticResource Gutter}"
                                   HorizontalAlignment="Right" Margin="0,7,10,0"/>
-                <Border Grid.Column="1" BorderBrush="{StaticResource ClaudeBrush}" BorderThickness="2,0,0,0"
-                        MaxWidth="920" HorizontalAlignment="Left"
-                        Padding="14,6,14,8">
+                <!-- MaxWidth is the reading measure: ~80 characters at the serif body size. -->
+                <Border Grid.Column="1" BorderBrush="{DynamicResource ClaudeBrush}" BorderThickness="2,0,0,0"
+                        MaxWidth="660" HorizontalAlignment="Left"
+                        Padding="18,7,18,10">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="Claude" Foreground="{StaticResource ClaudeBrush}"
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="Claude" Foreground="{DynamicResource ClaudeBrush}"
                                        FontSize="11" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding Model}" Style="{StaticResource Caption}"
                                        Margin="8,1,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <local:MarkdownBlock Foreground="{StaticResource TextBrush}"
-                                             FontFamily="{StaticResource UiFont}" FontSize="13.5"
+                        <local:MarkdownBlock Foreground="{DynamicResource TextBrush}"
+                                             FontFamily="{StaticResource SerifFont}" FontSize="15.5"
                                              Highlight="{Binding DataContext.HighlightTerm,
                                                          RelativeSource={RelativeSource AncestorType=Window}}"
                                              Markdown="{Binding Text}"/>
@@ -139,9 +141,9 @@
                     <ToggleButton Style="{StaticResource RowToggle}"
                                   IsChecked="{Binding IsExpanded, Mode=TwoWay}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="✳" Foreground="{StaticResource ThinkBrush}" FontSize="11"
+                            <TextBlock Text="✳" Foreground="{DynamicResource ThinkBrush}" FontSize="11"
                                        Margin="0,0,7,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Thinking" Foreground="{StaticResource ThinkBrush}"
+                            <TextBlock Text="Thinking" Foreground="{DynamicResource ThinkBrush}"
                                        FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding Preview}" Style="{StaticResource Caption}"
                                        Margin="9,0,0,0" VerticalAlignment="Center"
@@ -149,9 +151,9 @@
                         </StackPanel>
                     </ToggleButton>
                     <Border Visibility="{Binding IsExpanded, Converter={StaticResource B2V}}"
-                            Background="#FF1A1823" CornerRadius="6" Padding="12,9" Margin="6,3,0,6"
-                            BorderBrush="#FF2A2536" BorderThickness="1">
-                        <local:MarkdownBlock Foreground="#FFB6AFD0" FontStyle="Italic"
+                            Background="{DynamicResource ThinkBgBrush}" CornerRadius="6" Padding="12,9" Margin="6,3,0,6"
+                            BorderBrush="{DynamicResource ThinkBorderBrush}" BorderThickness="1">
+                        <local:MarkdownBlock Foreground="{DynamicResource ThinkBrush}" FontStyle="Italic"
                                              FontFamily="{StaticResource UiFont}" FontSize="12.5"
                                              Highlight="{Binding DataContext.HighlightTerm,
                                                          RelativeSource={RelativeSource AncestorType=Window}}"
@@ -180,25 +182,25 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="{Binding Name}"
-                                       Foreground="{StaticResource ToolBrush}" FontSize="11.5"
+                                       Foreground="{DynamicResource ToolBrush}" FontSize="11.5"
                                        FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="·" Style="{StaticResource Caption}"
                                        Margin="7,0" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="2" Text="{Binding Preview}"
                                        FontFamily="{StaticResource MonoFont}" FontSize="11"
-                                       Foreground="{StaticResource MutedBrush}"
+                                       Foreground="{DynamicResource MutedBrush}"
                                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="3" Text="{Binding StatusGlyph}" FontSize="11"
                                        Margin="10,0,0,0" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource LiveBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource LiveBrush}"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsError}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsPending}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource FaintBrush}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource FaintBrush}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -210,8 +212,8 @@
                     <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource B2V}}"
                                 Margin="6,3,0,8">
                         <TextBlock Text="INPUT" Style="{StaticResource Caption}" Margin="0,2,0,3"/>
-                        <Border Background="{StaticResource CodeBackgroundBrush}" CornerRadius="6"
-                                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                        <Border Background="{DynamicResource CodeBackgroundBrush}" CornerRadius="6"
+                                BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
                                 Padding="11,8">
                             <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto"
                                           PreviewMouseWheel="OnInnerScroll">
@@ -221,15 +223,15 @@
 
                         <TextBlock Text="RESULT" Style="{StaticResource Caption}" Margin="0,9,0,3"
                                    Visibility="{Binding Result, Converter={StaticResource NonEmpty}}"/>
-                        <Border Background="{StaticResource CodeBackgroundBrush}" CornerRadius="6"
+                        <Border Background="{DynamicResource CodeBackgroundBrush}" CornerRadius="6"
                                 BorderThickness="1" Padding="11,8"
                                 Visibility="{Binding Result, Converter={StaticResource NonEmpty}}">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush2}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsError}" Value="True">
-                                            <Setter Property="BorderBrush" Value="#FF5A2B2B"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBorderBrush}"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -264,14 +266,14 @@
                 <ContentPresenter Grid.Column="0" Content="{Binding}" ContentTemplate="{StaticResource Gutter}"
                                   HorizontalAlignment="Right" Margin="0,4,10,0"/>
                 <Border Grid.Column="1" Margin="12,2,0,2" Padding="10,6" CornerRadius="5"
-                        Background="#FF1A1A20" BorderThickness="1">
+                        Background="{DynamicResource CardBrush}" BorderThickness="1">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush2}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsError}" Value="True">
-                                    <Setter Property="BorderBrush" Value="#FF5A2B2B"/>
-                                    <Setter Property="Background" Value="#FF251A1A"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ErrorBorderBrush}"/>
+                                    <Setter Property="Background" Value="{DynamicResource ErrorBgBrush}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -280,7 +282,7 @@
                         <TextBlock Text="{Binding Label}" Style="{StaticResource Caption}" Margin="0,0,0,2"/>
                         <TextBox Style="{StaticResource CodeView}" Text="{Binding Text, Mode=OneWay}"
                                  MaxHeight="220" VerticalScrollBarVisibility="Auto"
-                                 Foreground="{StaticResource MutedBrush}"/>
+                                 Foreground="{DynamicResource MutedBrush}"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -294,7 +296,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Text}" Style="{StaticResource Caption}"
                            FontWeight="SemiBold" Margin="0,0,12,0" VerticalAlignment="Center"/>
-                <Border Grid.Column="1" Height="1" Background="{StaticResource BorderBrush2}"
+                <Border Grid.Column="1" Height="1" Background="{DynamicResource BorderBrush2}"
                         VerticalAlignment="Center"/>
             </Grid>
         </DataTemplate>
@@ -320,8 +322,8 @@
         </Grid.RowDefinitions>
 
         <!-- ===================== top bar ===================== -->
-        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="0,0,0,1" Padding="14,9">
+        <Border Grid.Row="0" Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1" Padding="14,9">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -330,7 +332,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="9" Height="9" CornerRadius="4.5" Background="{StaticResource ClaudeBrush}"
+                    <Border Width="9" Height="9" CornerRadius="4.5" Background="{DynamicResource ClaudeBrush}"
                             Margin="0,0,9,0"/>
                     <TextBlock Text="Claude Code" FontWeight="SemiBold" FontSize="13.5"
                                VerticalAlignment="Center"/>
@@ -355,7 +357,7 @@
                                   ToolTip="Stay pinned to the newest message as it streams in">
                         <StackPanel Orientation="Horizontal">
                             <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,6,0"
-                                    Background="{StaticResource LiveBrush}" VerticalAlignment="Center"
+                                    Background="{DynamicResource LiveBrush}" VerticalAlignment="Center"
                                     Visibility="{Binding Follow, Converter={StaticResource B2V}}"/>
                             <TextBlock Text="Follow" FontSize="11.5" Foreground="{Binding Foreground,
                                        RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
@@ -364,6 +366,9 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="{Binding ThemeLabel}" Style="{StaticResource GhostButton}"
+                            MinWidth="52" Margin="0,0,10,0" Command="{Binding CycleThemeCommand}"
+                            ToolTip="Appearance — click to cycle Auto / Light / Dark"/>
                     <Button Content="Expand all" Style="{StaticResource GhostButton}"
                             Command="{Binding ExpandAllToolsCommand}"/>
                     <Button Content="Collapse all" Style="{StaticResource GhostButton}" Margin="4,0,0,0"
@@ -385,7 +390,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- sessions -->
-            <Grid Grid.Column="0" Background="{StaticResource PanelBrush}">
+            <Grid Grid.Column="0" Background="{DynamicResource PanelBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*" MinHeight="90"/>
@@ -411,7 +416,7 @@
                                 <StackPanel Grid.Column="0">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,6,0"
-                                                Background="{StaticResource LiveBrush}" VerticalAlignment="Center"
+                                                Background="{DynamicResource LiveBrush}" VerticalAlignment="Center"
                                                 Visibility="{Binding HasLive, Converter={StaticResource B2V}}"/>
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5"
                                                    TextTrimming="CharacterEllipsis"/>
@@ -419,7 +424,7 @@
                                     <TextBlock Text="{Binding DisplayPath}" Style="{StaticResource Caption}"
                                                ToolTip="{Binding Dir}"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="{StaticResource CardBrush}" CornerRadius="8"
+                                <Border Grid.Column="1" Background="{DynamicResource CardBrush}" CornerRadius="8"
                                         Padding="6,1" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <TextBlock Text="{Binding CountText}" Style="{StaticResource Caption}"/>
                                 </Border>
@@ -430,7 +435,7 @@
                             <StackPanel Margin="0,4,6,5">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,6,0"
-                                            Background="{StaticResource LiveBrush}" VerticalAlignment="Center"
+                                            Background="{DynamicResource LiveBrush}" VerticalAlignment="Center"
                                             Visibility="{Binding IsLive, Converter={StaticResource B2V}}"
                                             ToolTip="Active in the last two minutes"/>
                                     <TextBlock Text="{Binding Title}" FontSize="12.5"
@@ -450,8 +455,8 @@
                 </TreeView>
 
                 <!-- full-text results across every session -->
-                <Border Grid.Row="2" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="0,1,0,0"
-                        Background="#FF17171C">
+                <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,1,0,0"
+                        Background="{DynamicResource WindowBrush}">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -516,11 +521,11 @@
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter TargetName="B" Property="Background"
-                                                                Value="{StaticResource HoverBrush}"/>
+                                                                Value="{DynamicResource HoverBrush}"/>
                                                     </Trigger>
                                                     <Trigger Property="IsSelected" Value="True">
                                                         <Setter TargetName="B" Property="Background"
-                                                                Value="{StaticResource SelectedBrush}"/>
+                                                                Value="{DynamicResource SelectedBrush}"/>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -533,7 +538,7 @@
                                 <DataTemplate>
                                     <StackPanel ToolTip="{Binding SessionTitle}">
                                         <StackPanel Orientation="Horizontal">
-                                            <Border Background="{StaticResource CardBrush}" CornerRadius="3"
+                                            <Border Background="{DynamicResource CardBrush}" CornerRadius="3"
                                                     Padding="4,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding KindLabel}" Style="{StaticResource Caption}"
                                                            FontSize="9.5"/>
@@ -546,14 +551,14 @@
                                         </StackPanel>
                                         <TextBlock TextWrapping="Wrap" MaxHeight="34" Margin="0,3,0,0"
                                                    TextTrimming="CharacterEllipsis"
-                                                   FontSize="11.5" Foreground="{StaticResource TextBrush}">
+                                                   FontSize="11.5" Foreground="{DynamicResource TextBrush}">
                                             <Run Text="{Binding Before, Mode=OneWay}"
-                                                 Foreground="{StaticResource MutedBrush}"/><Run
+                                                 Foreground="{DynamicResource MutedBrush}"/><Run
                                                  Text="{Binding Match, Mode=OneWay}"
-                                                 Background="{StaticResource MatchBrush}"
+                                                 Background="{DynamicResource MatchBrush}"
                                                  FontWeight="SemiBold"/><Run
                                                  Text="{Binding After, Mode=OneWay}"
-                                                 Foreground="{StaticResource MutedBrush}"/>
+                                                 Foreground="{DynamicResource MutedBrush}"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </DataTemplate>
@@ -572,8 +577,8 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Padding="22,12,22,11" Background="{StaticResource WindowBrush}"
-                        BorderBrush="{StaticResource BorderBrush2}" BorderThickness="0,0,0,1"
+                <Border Grid.Row="0" Padding="22,12,22,11" Background="{DynamicResource WindowBrush}"
+                        BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1"
                         Visibility="{Binding HasSelection, Converter={StaticResource B2V}}"
                         DataContext="{Binding SelectedDetail}">
                     <StackPanel>
@@ -604,7 +609,7 @@
                          HorizontalContentAlignment="Stretch"/>
 
                 <TextBlock Grid.Row="1" Text="Select a session on the left"
-                           Foreground="{StaticResource FaintBrush}" FontSize="14"
+                           Foreground="{DynamicResource FaintBrush}" FontSize="14"
                            HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -622,7 +627,7 @@
             <GridSplitter Grid.Column="3" Width="1"/>
 
             <!-- details -->
-            <Border Grid.Column="4" Background="{StaticResource PanelBrush}">
+            <Border Grid.Column="4" Background="{DynamicResource PanelBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding HasSelection, Converter={StaticResource B2V}}">
                     <StackPanel Margin="18,16,16,20" DataContext="{Binding SelectedDetail}">
@@ -656,7 +661,7 @@
                         <TextBlock Text="Tools used" Style="{StaticResource DetailKey}"/>
                         <TextBlock Text="{Binding Tools}" Style="{StaticResource DetailValue}" FontSize="11.5"/>
 
-                        <Border Height="1" Background="{StaticResource BorderBrush2}" Margin="0,2,0,14"/>
+                        <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="0,2,0,14"/>
                         <TextBlock Text="TOKENS" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
 
                         <Grid Margin="0,0,0,14">
@@ -689,16 +694,16 @@
                             <StackPanel Grid.Row="2" Grid.Column="0">
                                 <TextBlock Text="Total" Style="{StaticResource DetailKey}"/>
                                 <TextBlock Text="{Binding TotalTokens}" FontSize="15"
-                                           Foreground="{StaticResource ClaudeBrush}"/>
+                                           Foreground="{DynamicResource ClaudeBrush}"/>
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="1">
                                 <TextBlock Text="Est. cost (AUD)" Style="{StaticResource DetailKey}"/>
                                 <TextBlock Text="{Binding Cost}" FontSize="15"
-                                           Foreground="{StaticResource ClaudeBrush}"/>
+                                           Foreground="{DynamicResource ClaudeBrush}"/>
                             </StackPanel>
                         </Grid>
 
-                        <Border Height="1" Background="{StaticResource BorderBrush2}" Margin="0,2,0,14"/>
+                        <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="0,2,0,14"/>
                         <TextBlock Text="FILE" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
 
                         <TextBlock Text="Session id" Style="{StaticResource DetailKey}"/>
@@ -708,7 +713,7 @@
                         <TextBlock Text="Records / size" Style="{StaticResource DetailKey}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <TextBlock Text="{Binding Records}" FontSize="12.5"/>
-                            <TextBlock Text=" · " Foreground="{StaticResource MutedBrush}" FontSize="12.5"/>
+                            <TextBlock Text=" · " Foreground="{DynamicResource MutedBrush}" FontSize="12.5"/>
                             <TextBlock Text="{Binding Size}" FontSize="12.5"/>
                         </StackPanel>
 
@@ -718,15 +723,15 @@
                         <TextBlock Text="Path" Style="{StaticResource DetailKey}"/>
                         <TextBlock Text="{Binding Path}" Style="{StaticResource DetailValue}"
                                    FontFamily="{StaticResource MonoFont}" FontSize="10.5"
-                                   Foreground="{StaticResource MutedBrush}"/>
+                                   Foreground="{DynamicResource MutedBrush}"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
         </Grid>
 
         <!-- ===================== status bar ===================== -->
-        <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="0,1,0,0" Padding="14,6">
+        <Border Grid.Row="2" Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,1,0,0" Padding="14,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

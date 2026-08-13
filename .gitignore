@@ -10,3 +10,6 @@ obj/
 # OS
 Thumbs.db
 desktop.ini
+
+# Scratch space for dev aids and screenshots
+tmp/
