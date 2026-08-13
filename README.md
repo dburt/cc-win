@@ -33,7 +33,12 @@ as they grow, so a session you are running right now streams into the window as 
   appearance button cycles **Auto / Light / Dark** — Auto follows the Windows app theme — and
   the choice is remembered across launches. Switching recolours the running window, title bar
   included, without a restart.
-- **Export** a transcript to Markdown, reveal the `.jsonl` in Explorer, or copy its path.
+- **Resume in Terminal** opens a new terminal running `claude --resume <id>` for the selected
+  session, in that session's own working directory — and inside the WSL distro the transcript
+  came from, when it came from one. A login shell is used because `claude` normally lives on a
+  PATH a profile sets up, and the shell stays open after claude exits.
+- **Export** a transcript to Markdown, reveal the `.jsonl` in Explorer, or copy the session id
+  or file path from the copy icons in the FILE details.
 
 ## Build
 
