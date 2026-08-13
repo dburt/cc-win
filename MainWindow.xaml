@@ -38,6 +38,18 @@
         <Style x:Key="DetailKey" TargetType="TextBlock" BasedOn="{StaticResource Label}">
             <Setter Property="Margin" Value="0,0,0,1"/>
         </Style>
+        <!-- small metadata tag: category, verdict, review level -->
+        <Style x:Key="Chip" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="6,1,6,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ChipText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+        </Style>
+
         <!-- copy-to-clipboard affordance on a detail field; CommandParameter is the text to copy -->
         <Style x:Key="CopyIcon" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
@@ -295,6 +307,122 @@
             </Grid>
         </DataTemplate>
 
+        <!--
+            A ReportFindings call is a review result, not plumbing, so it gets a presentation of
+            its own: findings grouped by file, each one carrying the failure scenario that the
+            terminal's nested-list rendering leaves out entirely.
+        -->
+        <DataTemplate x:Key="FindingTemplate">
+            <Border Margin="0,0,0,7" CornerRadius="6" Padding="13,10,14,11"
+                    Background="{DynamicResource CardBrush}" BorderThickness="3,0,0,0">
+                <!-- the stripe carries the verdict; the chip below says it in words too -->
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="{DynamicResource MutedBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Verdict}" Value="CONFIRMED">
+                                <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Verdict}" Value="PLAUSIBLE">
+                                <Setter Property="BorderBrush" Value="{DynamicResource WarnBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Headline}" FontSize="13.5"
+                                   FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Column="1" Text="{Binding LineText}" Margin="12,3,0,0"
+                                   FontFamily="{StaticResource MonoFont}" FontSize="10.5"
+                                   VerticalAlignment="Top"
+                                   Foreground="{DynamicResource FaintBrush}"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                        <Border Style="{StaticResource Chip}"
+                                Visibility="{Binding Category, Converter={StaticResource NonEmpty}}">
+                            <TextBlock Text="{Binding Category}" Style="{StaticResource ChipText}"/>
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Margin="5,0,0,0"
+                                Visibility="{Binding Verdict, Converter={StaticResource NonEmpty}}">
+                            <TextBlock Text="{Binding Verdict}" Style="{StaticResource ChipText}"/>
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Margin="5,0,0,0"
+                                Visibility="{Binding Outcome, Converter={StaticResource NonEmpty}}">
+                            <TextBlock Text="{Binding Outcome}" Style="{StaticResource ChipText}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <local:MarkdownBlock Markdown="{Binding Detail}" FontSize="12.5" Margin="0,8,0,0"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         Visibility="{Binding Detail, Converter={StaticResource NonEmpty}}"/>
+
+                    <StackPanel Margin="0,9,0,0"
+                                Visibility="{Binding FailureScenario, Converter={StaticResource NonEmpty}}">
+                        <TextBlock Text="HOW IT FAILS" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+                        <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="2,0,0,0"
+                                Padding="11,0,0,0">
+                            <local:MarkdownBlock Markdown="{Binding FailureScenario}" FontSize="12"
+                                                 Foreground="{DynamicResource MutedBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FindingsTemplate">
+            <Grid Margin="0,8,0,4" ContextMenu="{StaticResource ItemMenu}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Grid.Column="0" Content="{Binding}" ContentTemplate="{StaticResource Gutter}"
+                                  HorizontalAlignment="Right" Margin="0,9,10,0"/>
+                <Border Grid.Column="1" MaxWidth="760" HorizontalAlignment="Left"
+                        Background="{DynamicResource PanelBrush}" CornerRadius="8"
+                        BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                        Padding="6,5,6,5">
+                    <StackPanel>
+                        <ToggleButton Style="{StaticResource RowToggle}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Code review" Foreground="{DynamicResource ToolBrush}"
+                                           FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Border Style="{StaticResource Chip}" Margin="8,0,0,0"
+                                        Visibility="{Binding Report.Level, Converter={StaticResource NonEmpty}}">
+                                    <TextBlock Text="{Binding Report.Level}" Style="{StaticResource ChipText}"/>
+                                </Border>
+                                <TextBlock Text="{Binding Report.Overview}" Style="{StaticResource Caption}"
+                                           Margin="9,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <ItemsControl ItemsSource="{Binding Report.Groups}" Margin="7,4,4,2"
+                                      Visibility="{Binding IsExpanded, Converter={StaticResource B2V}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,3,0,0">
+                                        <TextBlock Text="{Binding File}" Margin="0,0,0,5"
+                                                   FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <ItemsControl ItemsSource="{Binding Findings}"
+                                                      ItemTemplate="{StaticResource FindingTemplate}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="NoticeTemplate">
             <Grid Margin="0,1,0,1" ContextMenu="{StaticResource ItemMenu}">
                 <Grid.ColumnDefinitions>
@@ -345,6 +473,7 @@
                                         Assistant="{StaticResource AssistantTemplate}"
                                         Thinking="{StaticResource ThinkingTemplate}"
                                         Tool="{StaticResource ToolTemplate}"
+                                        Findings="{StaticResource FindingsTemplate}"
                                         Notice="{StaticResource NoticeTemplate}"/>
     </Window.Resources>
 

@@ -13,6 +13,7 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
     public DataTemplate? Assistant { get; set; }
     public DataTemplate? Thinking { get; set; }
     public DataTemplate? Tool { get; set; }
+    public DataTemplate? Findings { get; set; }
     public DataTemplate? Notice { get; set; }
     public DataTemplate? Day { get; set; }
 
@@ -21,6 +22,7 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
         UserItem => User,
         AssistantItem => Assistant,
         ThinkingItem => Thinking,
+        ToolItem { Report: not null } => Findings,   // must precede the general ToolItem case
         ToolItem => Tool,
         NoticeItem => Notice,
         DayItem => Day,

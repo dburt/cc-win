@@ -17,6 +17,7 @@
     <SolidColorBrush x:Key="ThinkBrush" Color="#FF9A8CC7"/>
     <SolidColorBrush x:Key="ToolBrush" Color="#FF5FB0A6"/>
     <SolidColorBrush x:Key="ErrorBrush" Color="#FFE8695F"/>
+    <SolidColorBrush x:Key="WarnBrush" Color="#FFE0AE4A"/>
     <SolidColorBrush x:Key="LiveBrush" Color="#FF4ADE80"/>
     <SolidColorBrush x:Key="LinkBrush" Color="#FF7FA6FF"/>
     <SolidColorBrush x:Key="CodeBackgroundBrush" Color="#FF101015"/>

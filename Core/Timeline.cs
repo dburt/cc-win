@@ -78,6 +78,9 @@ public sealed class ToolItem : TimelineItem
     public string InputJson { get; init; } = "";
     public string? ToolUseId { get; init; }
 
+    /// <summary>Set only for a ReportFindings call, which gets its own presentation.</summary>
+    public FindingsReport? Report { get; init; }
+
     public bool IsExpanded { get => _expanded; set => Set(ref _expanded, value); }
     public string Result { get => _result; private set => Set(ref _result, value); }
     public bool IsError { get => _isError; private set { if (Set(ref _isError, value)) Raise(nameof(StatusGlyph)); } }
@@ -296,6 +299,9 @@ public sealed class TimelineBuilder
                         Preview = b.InputPreview ?? "",
                         InputJson = Cap(b.InputJson, 20_000),
                         ToolUseId = b.ToolUseId,
+                        // Parsed from the uncapped JSON — a long report would otherwise be
+                        // truncated into unparseable JSON and lose its dedicated rendering.
+                        Report = FindingsReport.TryParse(b.ToolName ?? "", b.InputJson),
                     }.Seal();
                     if (b.ToolUseId is { } id) _openTools[id] = tool;
                     yield return tool;

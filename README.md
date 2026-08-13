@@ -19,6 +19,11 @@ as they grow, so a session you are running right now streams into the window as 
   (headings, lists, tables, block quotes, fenced code), collapsible thinking blocks, and each
   tool call paired with its result and a ✓ / ✕ / … status. Pasted and returned screenshots are
   rendered inline, and a date divider marks each new day.
+- **Code reviews get their own rendering.** A `ReportFindings` call is a review result, not
+  plumbing, so it is not shown as a tool call: findings are grouped by file, each one a card
+  whose stripe and chip carry the verdict (confirmed / plausible / applied outcome), and each
+  one keeps its **failure scenario** — the evidence for the finding, which the terminal's
+  nested-list rendering drops. The collapsed header counts the findings by verdict.
 - **Session details** — working directory, git branch, model, elapsed time, message and tool
   counts, and cumulative input / output / cache-read / cache-write token usage.
 - **Full-text search across every session** — `Ctrl+K` searches message bodies, thinking,
@@ -155,6 +160,7 @@ synchronously, part-way through the swap, while the remaining brushes are still 
 | `Core/SessionTail.cs` | Incremental byte-offset reader; rolling per-session summary |
 | `Core/Timeline.cs` | Records → renderable items, and tool-call/result pairing |
 | `Core/SearchIndex.cs` | Lazy per-session text index and the cross-session search |
+| `Core/Findings.cs` | Parses a `ReportFindings` call into its own presentable model |
 | `Core/Discovery.cs` | Windows + WSL history-root discovery |
 | `MainViewModel.cs` | Scanning, polling, filtering, commands |
 | `Ui/MarkdownBlock.cs` | The lightweight Markdown renderer |
