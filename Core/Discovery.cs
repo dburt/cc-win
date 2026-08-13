@@ -97,13 +97,18 @@ public static class Discovery
 
     /// <summary>Label a root so the UI can say where a session came from.</summary>
     public static string DescribeRoot(string root)
+        => DistroOf(root) is { } distro ? $"WSL: {distro}" : "Windows";
+
+    /// <summary>
+    /// The WSL distro a path lives in, or null when it is a plain Windows path — which side of
+    /// the machine a session has to be resumed on.
+    /// </summary>
+    public static string? DistroOf(string path)
     {
-        if (root.StartsWith(@"\\wsl.localhost\", StringComparison.OrdinalIgnoreCase))
-        {
-            var rest = root[@"\\wsl.localhost\".Length..];
-            var slash = rest.IndexOf('\\');
-            return slash > 0 ? $"WSL: {rest[..slash]}" : "WSL";
-        }
-        return "Windows";
+        const string prefix = @"\\wsl.localhost\";
+        if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
+        var rest = path[prefix.Length..];
+        var slash = rest.IndexOf('\\');
+        return slash > 0 ? rest[..slash] : null;
     }
 }

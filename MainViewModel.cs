@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -175,6 +176,7 @@ public sealed class MainViewModel : Observable
             p => { try { Clipboard.SetText((string)p!); } catch { } },
             p => p is string { Length: > 0 });
         ExportCommand = new RelayCommand(Export, _ => Selected is not null);
+        ResumeCommand = new RelayCommand(Resume, _ => Selected is not null);
         ExpandAllToolsCommand = new RelayCommand(() => SetToolExpansion(true));
         CollapseAllToolsCommand = new RelayCommand(() => SetToolExpansion(false));
 
@@ -206,6 +208,7 @@ public sealed class MainViewModel : Observable
     /// <summary>Copies its parameter to the clipboard; used by the detail panel's copy icons.</summary>
     public ICommand CopyTextCommand { get; }
     public ICommand ExportCommand { get; }
+    public ICommand ResumeCommand { get; }
     public ICommand ExpandAllToolsCommand { get; }
     public ICommand CollapseAllToolsCommand { get; }
     public ICommand JumpCommand { get; }
@@ -682,6 +685,61 @@ public sealed class MainViewModel : Observable
         catch (Exception ex)
         {
             Status = "Could not open Explorer: " + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Opens a terminal running `claude --resume &lt;id&gt;` in the session's own working directory,
+    /// inside the WSL distro the transcript came from when it came from one. The shell is a login
+    /// shell because `claude` usually lives in a PATH entry only a profile sets up, and it drops
+    /// to an interactive shell afterwards so the window survives claude exiting.
+    /// </summary>
+    private void Resume(object? _)
+    {
+        if (Selected is not { } s) return;
+
+        // The id is a filename off disk and is about to be interpolated into a shell command.
+        if (!Regex.IsMatch(s.SessionId, @"^[A-Za-z0-9._-]+$"))
+        {
+            Status = "That session's filename isn't safe to pass to a shell.";
+            return;
+        }
+
+        var cwd = s.Digest.Cwd;
+        var psi = new ProcessStartInfo { UseShellExecute = true };
+
+        if (Discovery.DistroOf(s.Path) is { } distro)
+        {
+            psi.FileName = "wsl.exe";
+            psi.ArgumentList.Add("-d");
+            psi.ArgumentList.Add(distro);
+            if (!string.IsNullOrEmpty(cwd))
+            {
+                psi.ArgumentList.Add("--cd");
+                psi.ArgumentList.Add(cwd);
+            }
+            psi.ArgumentList.Add("--");
+            psi.ArgumentList.Add("bash");
+            psi.ArgumentList.Add("-lic");
+            psi.ArgumentList.Add($"claude --resume {s.SessionId}; exec bash -i");
+        }
+        else
+        {
+            psi.FileName = "powershell.exe";
+            if (!string.IsNullOrEmpty(cwd) && Directory.Exists(cwd)) psi.WorkingDirectory = cwd;
+            psi.ArgumentList.Add("-NoExit");
+            psi.ArgumentList.Add("-Command");
+            psi.ArgumentList.Add($"claude --resume {s.SessionId}");
+        }
+
+        try
+        {
+            Process.Start(psi);
+            Status = $"Resuming {s.ShortId} in a new terminal…";
+        }
+        catch (Exception ex)
+        {
+            Status = "Could not open a terminal: " + ex.Message;
         }
     }
 

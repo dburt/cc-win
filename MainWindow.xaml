@@ -800,6 +800,10 @@
                             Command="{Binding RevealCommand}"/>
                     <Button Content="Export .md" Style="{StaticResource GhostButton}" Margin="4,0,0,0"
                             Command="{Binding ExportCommand}"/>
+                    <Button Content="Resume in Terminal" Margin="10,0,0,0"
+                            Command="{Binding ResumeCommand}"
+                            ToolTip="Open a terminal running claude --resume for this session,
+                                     in its own working directory"/>
                 </StackPanel>
             </Grid>
         </Border>
